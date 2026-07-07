@@ -1,98 +1,81 @@
-import React from 'react';
 import { headers } from "next/headers";
-import { StatusBadge } from '@/components/StatusBadge';
-import { EmptyState } from '@/components/EmptyState';
+import { CropCard } from "@/components/CropCard";
+import { EmptyState } from "@/components/EmptyState";
+import { LayoutDashboard, Wallet, TrendingUp } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
-async function getSubscriptions() {
+async function getMySubscriptions() {
   const host = headers().get("host");
   const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
   
   try {
-    const res = await fetch(`${protocol}://${host}/api/buyer/subscriptions`, { cache: 'no-store' });
+    const res = await fetch(`${protocol}://${host}/api/buyer/subscriptions`, { 
+      cache: 'no-store',
+      // Simulating a logged-in buyer for demo purposes
+      headers: { 'x-user-email': 'buyer@yieldpay.com' }
+    });
     if (!res.ok) return [];
     const json = await res.json();
     return json.data || [];
   } catch (e) {
-    console.error("Failed to fetch subscriptions internally", e);
+    console.error("Failed to fetch subscriptions", e);
     return [];
   }
 }
 
 export default async function Dashboard() {
-  const subscriptions = await getSubscriptions();
+  const subscriptions = await getMySubscriptions();
+  const totalInvested = subscriptions.reduce((acc: number, sub: any) => acc + sub.amount, 0);
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20">
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <a href="/" className="font-bold text-xl text-gray-900 tracking-tight flex items-center gap-2 hover:opacity-80">
-                <div className="relative w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">Y</div>
-                Yield<span className="text-green-600">Pay</span>
-             </a>
-          </div>
-          <span className="text-sm font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-full">Buyer Dashboard</span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-fade-in-up">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-gray-200 pb-6">
+        <div>
+          <h1 className="text-4xl font-extrabold text-moolre-navy flex items-center gap-3">
+            <LayoutDashboard className="w-10 h-10 text-moolre-gold" />
+            Buyer Dashboard
+          </h1>
+          <p className="text-gray-500 mt-2 text-lg">Monitor the progress of your funded agricultural cycles.</p>
         </div>
-      </header>
+      </div>
 
-      <section className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Portfolio</h1>
-        <p className="text-gray-500 mb-8">Track the progress of the harvests you have funded.</p>
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+         <div className="bg-gradient-to-br from-moolre-navy to-gray-900 rounded-3xl p-6 text-white shadow-lg border border-gray-800">
+           <div className="flex justify-between items-start mb-4">
+             <div className="bg-white/10 p-3 rounded-2xl">
+               <Wallet className="w-6 h-6 text-moolre-gold" />
+             </div>
+           </div>
+           <p className="text-gray-400 text-sm font-semibold mb-1">Total Funded (GHS)</p>
+           <h3 className="text-3xl font-bold">₵{totalInvested.toLocaleString()}</h3>
+         </div>
+         <div className="bg-gradient-to-br from-moolre-green to-emerald-900 rounded-3xl p-6 text-white shadow-lg border border-emerald-800">
+           <div className="flex justify-between items-start mb-4">
+             <div className="bg-white/10 p-3 rounded-2xl">
+               <TrendingUp className="w-6 h-6 text-emerald-300" />
+             </div>
+           </div>
+           <p className="text-emerald-100/70 text-sm font-semibold mb-1">Active Farms Supported</p>
+           <h3 className="text-3xl font-bold">{subscriptions.length}</h3>
+         </div>
+      </div>
 
-        {subscriptions.length === 0 ? (
-          <EmptyState 
-            title="No investments yet" 
-            description="You haven't funded any crops. Go to the marketplace to start financing farmers." 
-          />
-        ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-600">
-                <thead className="bg-gray-50 text-gray-900 uppercase text-xs font-semibold border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-4">Crop</th>
-                    <th className="px-6 py-4">Farmer Region</th>
-                    <th className="px-6 py-4">Investment</th>
-                    <th className="px-6 py-4">Stage</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Expected Harvest</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {subscriptions.map((sub: any) => {
-                    const crop = sub.cropCycleId;
-                    if (!crop) return null; // Defensive check
-                    
-                    return (
-                      <tr key={sub._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                           {crop.acres} Acres of {crop.cropType}
-                        </td>
-                        <td className="px-6 py-4">{crop.region}, {crop.district}</td>
-                        <td className="px-6 py-4 font-semibold text-green-700">GHS {sub.amount}</td>
-                        <td className="px-6 py-4">
-                           <span className="inline-flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                              {crop.stage}
-                           </span>
-                        </td>
-                        <td className="px-6 py-4">
-                           <StatusBadge status={sub.status === 'active' ? crop.status : sub.status} />
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                           {new Date(crop.expectedHarvestDate).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
-    </main>
+      <h2 className="text-2xl font-bold text-moolre-navy mb-6">Your Portfolio</h2>
+
+      {subscriptions.length === 0 ? (
+        <EmptyState 
+          title="No active investments" 
+          description="You haven't funded any farms yet. Head over to the marketplace to start!" 
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {subscriptions.map((sub: any) => (
+            <CropCard key={sub._id} crop={sub.cropCycleId} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
