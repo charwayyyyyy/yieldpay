@@ -6,6 +6,7 @@ import { Farmer } from '@/models/Farmer';
 import { CropCycle } from '@/models/CropCycle';
 import { InsuranceClaim } from '@/models/InsuranceClaim';
 import { sendSMS } from '@/lib/moolre';
+import { toLocalGhanaPhone } from '@/lib/phone';
 
 // Calculate required funding based on crop and acres (Simplified transparent table)
 function calculateFunding(crop: string, acres: number): number {
@@ -40,13 +41,15 @@ export async function POST(req: NextRequest) {
     }
 
     const sessionId = body.sessionId || body.session_id;
-    const phoneNumber = body.phoneNumber || body.phone || body.msisdn;
+    const rawPhoneNumber = body.phoneNumber || body.phone || body.msisdn;
     const serviceCode = body.serviceCode || body.service_code;
     const rawText = body.text || body.message || '';
 
-    if (!sessionId || !phoneNumber) {
+    if (!sessionId || !rawPhoneNumber) {
       return new NextResponse('END Invalid request', { status: 400 });
     }
+
+    const phoneNumber = toLocalGhanaPhone(rawPhoneNumber);
 
     // Standard USSD parsing: "1*2*3" -> current input is "3"
     const textArray = rawText.split('*');

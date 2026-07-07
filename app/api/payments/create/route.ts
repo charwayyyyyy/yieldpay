@@ -4,6 +4,7 @@ import { CropCycle } from '@/models/CropCycle';
 import { User } from '@/models/User';
 import { Transaction } from '@/models/Transaction';
 import { createCollectionPayment } from '@/lib/moolre';
+import { normalizeGhanaPhone } from '@/lib/phone';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,11 +13,11 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const cropCycleId = formData.get('cropCycleId') as string;
     const buyerName = formData.get('buyerName') as string;
-    const buyerPhone = formData.get('buyerPhone') as string;
+    const rawBuyerPhone = formData.get('buyerPhone') as string;
     const buyerEmail = formData.get('buyerEmail') as string;
     const amountStr = formData.get('amount') as string;
     
-    if (!cropCycleId || !buyerName || (!buyerPhone && !buyerEmail) || !amountStr) {
+    if (!cropCycleId || !buyerName || (!rawBuyerPhone && !buyerEmail) || !amountStr) {
        return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -33,6 +34,8 @@ export async function POST(req: NextRequest) {
     if (crop.status !== 'open' && crop.status !== 'partially_funded') {
        return NextResponse.json({ ok: false, error: 'Crop cycle is no longer accepting funds' }, { status: 400 });
     }
+
+    const buyerPhone = normalizeGhanaPhone(rawBuyerPhone);
 
     // Find or create buyer
     let buyer = await User.findOne({ $or: [{ email: buyerEmail }, { phone: buyerPhone }] });
@@ -87,7 +90,7 @@ export async function POST(req: NextRequest) {
     if (paymentResult.paymentUrl) {
        return NextResponse.redirect(paymentResult.paymentUrl, 303);
     } else {
-       // Fallback if no URL is returned (e.g. USSD prompt initiated directly)
+       // Fallback if no URL is returned
        return NextResponse.redirect(`${appUrl}/dashboard?msg=payment_initiated`, 303);
     }
 

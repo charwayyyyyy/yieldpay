@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { detectGhanaNetworkChannel } from './phone';
 
 interface MoolreResponse {
   ok: boolean;
@@ -9,29 +10,25 @@ interface MoolreResponse {
 }
 
 const BASE_URL = process.env.MOOLRE_BASE_URL;
-const API_KEY = process.env.MOOLRE_API_KEY;
+const API_USER = process.env.MOOLRE_API_USER;
+const API_KEY = process.env.MOOLRE_API_KEY; // Private key for transfers
+const API_PUBKEY = process.env.MOOLRE_API_PUBKEY; // Public key for collections
 const SECRET_KEY = process.env.MOOLRE_SECRET;
-const COLLECTIONS_ENDPOINT = process.env.MOOLRE_COLLECTIONS_ENDPOINT;
-const DISBURSEMENT_ENDPOINT = process.env.MOOLRE_DISBURSEMENT_ENDPOINT;
-const SMS_ENDPOINT = process.env.MOOLRE_SMS_ENDPOINT;
-const SENDER_ID = process.env.MOOLRE_SENDER_ID;
-const VAS_KEY = process.env.MOOLRE_SMS_VAS_KEY;
+const ACCOUNT_NUMBER = process.env.MOOLRE_ACCOUNT_NUMBER;
 
-function checkConfig() {
-  if (!BASE_URL || !API_KEY || !SECRET_KEY) {
-    throw new Error('Moolre credentials missing. Ensure MOOLRE_BASE_URL, MOOLRE_API_KEY, and MOOLRE_SECRET are set.');
-  }
-}
+const COLLECTIONS_ENDPOINT = process.env.MOOLRE_COLLECTIONS_ENDPOINT || '/embed/link';
+const DISBURSEMENT_ENDPOINT = process.env.MOOLRE_DISBURSEMENT_ENDPOINT || '/open/transact/transfer';
+const SMS_ENDPOINT = process.env.MOOLRE_SMS_ENDPOINT || '/open/sms/send';
+const SMS_STATUS_ENDPOINT = process.env.MOOLRE_SMS_STATUS_ENDPOINT || '/open/sms/status';
+const SENDER_ID = process.env.MOOLRE_SENDER_ID || 'YieldPay';
+const VAS_KEY = process.env.MOOLRE_SMS_VAS_KEY;
 
 export async function createCollectionPayment({
   amount,
   reference,
-  customerName,
-  customerPhone,
   customerEmail,
   callbackUrl,
   redirectUrl,
-  description,
 }: {
   amount: number;
   reference: string;
@@ -42,38 +39,41 @@ export async function createCollectionPayment({
   redirectUrl: string;
   description: string;
 }): Promise<MoolreResponse> {
-  checkConfig();
-  if (!COLLECTIONS_ENDPOINT) throw new Error('MOOLRE_COLLECTIONS_ENDPOINT missing');
+  if (!BASE_URL || !API_USER || !API_PUBKEY) {
+    return { ok: false, error: 'Moolre collection credentials missing.' };
+  }
 
   try {
     const response = await fetch(`${BASE_URL}${COLLECTIONS_ENDPOINT}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        'X-API-USER': API_USER,
+        'X-API-PUBKEY': API_PUBKEY,
       },
       body: JSON.stringify({
-        amount,
-        reference,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-        callback_url: callbackUrl,
-        redirect_url: redirectUrl,
-        description,
+        type: 1,
+        amount: amount.toString(),
+        email: customerEmail || 'demo@yieldpay.ai',
+        externalref: reference,
+        callback: callbackUrl,
+        redirect: redirectUrl,
+        reusable: "0",
+        currency: "GHS",
+        accountnumber: ACCOUNT_NUMBER || '',
       }),
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || (data.status !== 1 && data.status !== '1')) {
       return { ok: false, error: data.message || 'Payment initiation failed', raw: data };
     }
 
     return {
       ok: true,
-      providerReference: data.data?.reference || data.reference,
-      paymentUrl: data.data?.checkout_url || data.checkout_url,
+      providerReference: data.reference || data.data?.reference,
+      paymentUrl: data.authorization_url || data.checkout_url || data.data?.checkout_url,
       raw: data,
     };
   } catch (error: any) {
@@ -84,9 +84,7 @@ export async function createCollectionPayment({
 export async function initiateDisbursement({
   amount,
   recipientPhone,
-  recipientName,
   reference,
-  narration,
 }: {
   amount: number;
   recipientPhone: string;
@@ -94,34 +92,41 @@ export async function initiateDisbursement({
   reference: string;
   narration: string;
 }): Promise<MoolreResponse> {
-  checkConfig();
-  if (!DISBURSEMENT_ENDPOINT) throw new Error('MOOLRE_DISBURSEMENT_ENDPOINT missing');
+  if (!BASE_URL || !API_USER || !API_KEY) {
+    return { ok: false, error: 'Moolre disbursement credentials missing.' };
+  }
+
+  const channel = detectGhanaNetworkChannel(recipientPhone) || '1'; // Default to MTN if unknown
 
   try {
     const response = await fetch(`${BASE_URL}${DISBURSEMENT_ENDPOINT}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        'X-API-USER': API_USER,
+        'X-API-KEY': API_KEY,
       },
       body: JSON.stringify({
-        amount,
-        recipient_phone: recipientPhone,
-        recipient_name: recipientName,
-        reference,
-        narration,
+        type: 1,
+        channel: channel,
+        currency: "GHS",
+        amount: amount.toString(),
+        receiver: recipientPhone,
+        externalref: reference,
+        reference: reference,
+        accountnumber: ACCOUNT_NUMBER || '',
       }),
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || (data.status !== 1 && data.status !== '1')) {
       return { ok: false, error: data.message || 'Disbursement initiation failed', raw: data };
     }
 
     return {
       ok: true,
-      providerReference: data.data?.reference || data.reference,
+      providerReference: data.reference || data.data?.reference,
       raw: data,
     };
   } catch (error: any) {
@@ -129,45 +134,74 @@ export async function initiateDisbursement({
   }
 }
 
-export async function sendSMS({ to, message }: { to: string; message: string }): Promise<MoolreResponse> {
-  checkConfig();
-  if (!SMS_ENDPOINT) throw new Error('MOOLRE_SMS_ENDPOINT missing');
+export async function initiateBulkDisbursements(payouts: Array<{
+  amount: number;
+  recipientPhone: string;
+  recipientName: string;
+  reference: string;
+  narration: string;
+}>): Promise<{ successful: number; failed: number; results: any[] }> {
+  // Moolre doesn't have an explicit array-based /bulk endpoint in the basic docs,
+  // so we process payouts in parallel using the verified transfer endpoint.
+  
+  const results = await Promise.allSettled(
+    payouts.map(payout => initiateDisbursement(payout))
+  );
 
-  // Need to import SMSLog inside function to avoid circular deps if any, or just import at top.
-  // Actually, better to import at top, but for now we can dynamically import to be safe since lib/moolre is low-level.
+  let successful = 0;
+  let failed = 0;
+
+  const formattedResults = results.map((res, index) => {
+    const payout = payouts[index];
+    if (res.status === 'fulfilled' && res.value.ok) {
+      successful++;
+      return { success: true, reference: payout.reference, providerReference: res.value.providerReference };
+    } else {
+      failed++;
+      return { success: false, reference: payout.reference, error: res.status === 'fulfilled' ? res.value.error : res.reason };
+    }
+  });
+
+  return { successful, failed, results: formattedResults };
+}
+
+export async function sendSMS({ to, message }: { to: string; message: string }): Promise<MoolreResponse> {
+  if (!BASE_URL || !VAS_KEY) {
+    console.warn('Moolre SMS credentials missing (VAS_KEY), skipping SMS.');
+    return { ok: false, error: 'VAS_KEY missing' };
+  }
+
   const { SMSLog } = require('@/models/SMSLog');
   
   const smsLog = new SMSLog({
      phoneNumber: to,
-     recipientType: 'farmer', // Defaulting for now, adjust if needed
+     recipientType: 'farmer',
      message,
      status: 'pending'
   });
   await smsLog.save().catch(console.error);
 
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`,
-    };
-    
-    if (VAS_KEY) {
-      headers['X-API-VASKEY'] = VAS_KEY;
-    }
-
     const response = await fetch(`${BASE_URL}${SMS_ENDPOINT}`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-VASKEY': VAS_KEY,
+      },
       body: JSON.stringify({
-        recipient: to,
-        sender_id: SENDER_ID,
-        message,
+        type: 1,
+        senderid: SENDER_ID,
+        messages: [{
+          recipient: to,
+          message: message,
+          ref: `SMS-${Date.now()}`
+        }]
       }),
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || (data.status !== 1 && data.status !== '1')) {
       smsLog.status = 'failed';
       smsLog.rawProviderResponse = data;
       await smsLog.save().catch(console.error);
@@ -175,13 +209,13 @@ export async function sendSMS({ to, message }: { to: string; message: string }):
     }
 
     smsLog.status = 'sent';
-    smsLog.providerReference = data.data?.message_id || data.message_id;
+    smsLog.providerReference = data.data?.message_id || data.message_id || 'success';
     smsLog.rawProviderResponse = data;
     await smsLog.save().catch(console.error);
 
     return {
       ok: true,
-      providerReference: data.data?.message_id || data.message_id,
+      providerReference: smsLog.providerReference,
       raw: data,
     };
   } catch (error: any) {
@@ -192,11 +226,48 @@ export async function sendSMS({ to, message }: { to: string; message: string }):
   }
 }
 
+export async function checkSMSStatus(refs: string[]): Promise<MoolreResponse> {
+  if (!BASE_URL || !VAS_KEY) {
+    return { ok: false, error: 'VAS_KEY missing' };
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}${SMS_STATUS_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-VASKEY': VAS_KEY,
+      },
+      body: JSON.stringify({
+        type: 5,
+        ref: refs
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || (data.status !== 1 && data.status !== '1')) {
+      return { ok: false, error: data.message || 'SMS status check failed', raw: data };
+    }
+
+    return {
+      ok: true,
+      raw: data,
+    };
+  } catch (error: any) {
+    return { ok: false, error: error.message, raw: error };
+  }
+}
+
 export function verifyWebhookSignature({ rawBody, signatureHeader }: { rawBody: string; signatureHeader: string }): boolean {
-  // If the signature format is unknown, implement an isolated verifier.
-  // We'll assume a standard HMAC SHA256 using the SECRET_KEY for now.
+  if (process.env.MOOLRE_WEBHOOK_REQUIRE_SIGNATURE !== 'true') {
+    // Audit Note: If signature verification exists, make it optional unless official signing details are present.
+    // If not strictly required by ENV, we accept it (for hackathon demo reliability).
+    return true; 
+  }
+
   if (!SECRET_KEY) return false;
-  if (!signatureHeader) return true; // If no header is provided in Moolre, maybe they don't sign. We fail open ONLY if missing in DEV or if they literally don't send one, but typically we should require it.
+  if (!signatureHeader) return false; 
   
   try {
     const expectedSignature = crypto
@@ -204,7 +275,6 @@ export function verifyWebhookSignature({ rawBody, signatureHeader }: { rawBody: 
       .update(rawBody)
       .digest('hex');
       
-    // Compare securely
     return crypto.timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expectedSignature));
   } catch (error) {
     console.error('Webhook signature verification failed:', error);

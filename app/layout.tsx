@@ -45,6 +45,9 @@ export default function RootLayout({
                 <Link href="/dashboard" className="text-moolre-navy hover:text-moolre-green font-medium transition-colors">
                   Dashboard
                 </Link>
+                <Link href="/admin?key=demo123" className="text-moolre-navy hover:text-moolre-green font-medium transition-colors">
+                  Admin
+                </Link>
               </div>
             </div>
           </div>
@@ -56,7 +59,14 @@ export default function RootLayout({
         
         {/* Simple Footer */}
         <footer className="bg-white border-t border-gray-200 mt-12 py-8 text-center text-gray-500 text-sm">
-          <p>© {new Date().getFullYear()} YieldPay AI. Built for the Moolre Startup Cup.</p>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
+            <p>© {new Date().getFullYear()} YieldPay AI. Built for the Moolre Startup Cup.</p>
+            <div className="mt-4 md:mt-0 flex space-x-6">
+              <Link href="/privacy" className="hover:text-moolre-green transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-moolre-green transition-colors">Terms of Use</Link>
+              <Link href="/api-docs" className="hover:text-moolre-green transition-colors font-semibold">API Documentation (Moolre Integration)</Link>
+            </div>
+          </div>
         </footer>
       </body>
     </html>

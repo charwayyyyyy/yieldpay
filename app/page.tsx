@@ -20,8 +20,21 @@ async function getCrops() {
   }
 }
 
+async function getStats() {
+  const host = headers().get("host");
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  try {
+    const res = await fetch(`${protocol}://${host}/api/stats`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default async function Home() {
   const crops = await getCrops();
+  const stats = await getStats();
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-80px)]">
@@ -61,6 +74,31 @@ export default async function Home() {
                <span>AI Crop Insured</span>
              </div>
           </div>
+
+          {stats && (
+            <div className="mt-12 grid grid-cols-2 md:grid-cols-5 gap-4 text-center border-t border-white/20 pt-8 max-w-4xl mx-auto">
+              <div>
+                <p className="text-3xl font-bold text-white">{stats.farmers}</p>
+                <p className="text-sm text-gray-300">Farmers</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-white">{stats.acres}</p>
+                <p className="text-sm text-gray-300">Acres Supported</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-moolre-gold">GHS {stats.funded.toLocaleString()}</p>
+                <p className="text-sm text-gray-300">Total Funded</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-white">{stats.cycles}</p>
+                <p className="text-sm text-gray-300">Crop Cycles</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-white">{stats.sms}</p>
+                <p className="text-sm text-gray-300">SMS Alerts</p>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
