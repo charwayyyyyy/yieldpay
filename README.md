@@ -1,51 +1,115 @@
-# YieldPay AI
+<div align="center">
+  <img src="./public/logo.svg" alt="YieldPay Logo" width="200" />
+  <h1>YieldPay AI</h1>
+  <p><strong>Fund a Farmer. Share the Yield.</strong></p>
+  <p><em>An intensive agricultural fintech platform built for the Moolre Startup Cup.</em></p>
+</div>
 
-YieldPay AI turns urban food demand into direct pre-harvest financing for Ghanaian farmers using web payments, USSD crop registration, SMS alerts, automated disbursements, and AI-assisted crop risk insurance.
+---
 
-**Built for the Moolre Startup Cup.**
+## 🌾 The Vision
 
-## Architecture
+**YieldPay AI** solves a critical structural problem in West African agriculture: smallholder farmers lack the pre-harvest working capital required to maximize their crop yields, while urban populations have disposable income but no direct, trustworthy mechanism to invest in the agricultural supply chain.
 
-YieldPay uses a Push-and-Pull model:
-- **Farmers** use USSD (`*919*4018#` or similar) to register crops, update progress, and file insurance claims without internet access.
-- **Urban Buyers** use the Web Marketplace to discover open crop cycles and fund them via Moolre Collections.
-- **System** sends SMS alerts for funding, progress, and AI insurance payouts via Moolre SMS and Disbursements.
+YieldPay bridges this gap by turning urban food demand into direct pre-harvest financing. We provide an end-to-end ecosystem that connects farmers without internet access (via USSD) to urban buyers (via an elegant Web Platform), fully powered by **Moolre's robust Fintech APIs**.
 
-## Tech Stack
-- **Frontend**: Next.js (App Router), Tailwind CSS
-- **Backend**: Next.js API Routes, Node.js
-- **Database**: MongoDB Atlas with Mongoose
-- **Integrations**: Moolre API (Collections, Disbursements, SMS, USSD Webhooks), Google Gemini AI
+---
 
-## Environment Setup
-Copy `.env.example` to `.env.local` and configure:
+## 🚀 Intensive Core Features
 
-1. **MongoDB Atlas**: Get your connection string from MongoDB Atlas.
-2. **Moolre**: Add your API Key, Secret Key, and Endpoint paths.
-3. **Gemini**: Add your `GEMINI_API_KEY` for AI insurance processing.
+### 1. Offline Farmer Onboarding (Moolre USSD)
+Farmers in rural areas do not need smartphones or internet to participate. They simply dial the Moolre-provided USSD code (`*919*4018#`) on any basic feature phone. 
+- **Registration**: Farmers register their identity and mobile money number.
+- **Crop Listing**: Farmers can list an upcoming harvest (e.g., Maize, 10 Acres, GHS 5000 required).
+- **Updates**: Farmers report progress (planting, growing, harvesting) via USSD menus.
 
-## Running Locally
+### 2. Urban Capital Injection (Moolre Collections)
+Urban buyers browse the YieldPay Web Marketplace to discover active, vetted farms. 
+- When a buyer decides to fund a farm, the platform initiates a seamless **Moolre Collection** request.
+- The funds are securely aggregated until the farm's required capital target is met.
+
+### 3. Automated Capital Deployment (Moolre Disbursements)
+Once a farm is fully funded, YieldPay automatically triggers a **Moolre Disbursement**.
+- The working capital is instantly sent directly to the farmer's registered mobile money wallet.
+- This ensures zero intermediaries, zero delays, and complete financial transparency.
+
+### 4. Real-time Notifications (Moolre SMS)
+Trust is built on communication. YieldPay utilizes **Moolre SMS** to keep all parties instantly informed.
+- **Farmers** receive SMS alerts when their farm receives partial funding or when funds are disbursed.
+- **Buyers** receive SMS updates regarding the lifecycle progress of the farm they invested in.
+
+### 5. AI-Powered Crop Risk Insurance (Google Gemini AI)
+Agriculture is inherently risky. YieldPay mitigates this with an automated AI insurance underwriter.
+- If a farmer faces an issue (e.g., pest infestation, drought), they report the incident via USSD.
+- **Google Gemini AI** parses the unstructured incident report, structures it, and calculates an initial claim severity and payout recommendation.
+
+---
+
+## 🏗️ Technical Architecture
+
+YieldPay is a modern, full-stack Next.js application designed for scale, speed, and aesthetic excellence.
+
+- **Frontend**: Next.js 14 App Router, React, Tailwind CSS (Custom Moolre color tokens, Glassmorphism, Premium Typography with Outfit & Fraunces fonts).
+- **Backend**: Next.js Serverless API Routes.
+- **Database**: MongoDB Atlas (via Mongoose ODM) with robust schemas for `User`, `Farmer`, `CropCycle`, `Transaction`, and `InsuranceClaim`.
+- **Integrations**: 
+  - `api.moolre.com` (Collections, Disbursements, SMS).
+  - Webhooks (`/api/webhooks/moolre`) to asynchronously handle transaction status updates.
+  - USSD Gateway (`/api/ussd`) to handle incoming state-based USSD sessions.
+
+---
+
+## 🏆 Moolre Startup Cup Alignment
+
+YieldPay is explicitly engineered to excel in the Moolre Startup Cup judging categories:
+
+1. **Best Integration**: We utilize the *entire* Moolre stack (USSD, SMS, Collections, Disbursements, and Webhooks) in a single, cohesive workflow.
+2. **Best UX**: A stunning, animated, responsive UI that instills financial trust and premium aesthetics.
+3. **Practical AI**: Gemini AI is not a gimmick; it actively underwrites insurance claims by parsing raw USSD text inputs into structured data.
+4. **Social Impact & Zagey Vision**: Creates a direct pipeline of wealth distribution from urban centers to rural producers, empowering everyday people.
+
+---
+
+## ⚙️ Environment Setup
+
+To run YieldPay locally, copy `.env.example` to `.env` and fill in the following:
+
+```env
+MONGODB_URI=your_mongodb_atlas_connection_string
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Moolre API Configuration
+MOOLRE_BASE_URL=https://api.moolre.com
+MOOLRE_API_KEY=your_public_key
+MOOLRE_SECRET=your_private_key
+MOOLRE_COLLECTIONS_ENDPOINT=/v1/collections
+MOOLRE_DISBURSEMENT_ENDPOINT=/v1/disbursements
+MOOLRE_SMS_ENDPOINT=/v1/sms
+MOOLRE_USSD_SERVICE_CODE=*919*4018#
+MOOLRE_SENDER_ID=YieldPay
+
+# AI Configuration
+GEMINI_API_KEY=your_google_gemini_api_key
+```
+
+## 💻 Running the App
+
 ```bash
+# 1. Install dependencies
 npm install
-npm run seed  # (Optional: seeds initial farmers and crops)
+
+# 2. (Optional) Seed the database with mock farmers and crops
+npm run seed
+
+# 3. Start the development server
 npm run dev
 ```
 
-## Vercel Deployment & USSD
-When deploying to Vercel, ensure you add the Environment Variables in the project settings.
+Navigate to `http://localhost:3000` to interact with the platform.
 
-**USSD CALLBACK URL:**
-After deploying on Vercel, use:
-`https://YOUR-PRODUCTION-DOMAIN/api/ussd`
+## 📡 Webhook & USSD Configuration (Production)
 
-Example:
-`https://yieldpay-ai.vercel.app/api/ussd`
+When deploying to Vercel (or any production environment), configure your Moolre dashboard with the following endpoints:
 
-Put this into the Moolre USSD service settings under Callback URL for your approved code.
-
-## Demo Flow & Judging Alignment
-YieldPay AI is engineered to win the Moolre Startup Cup criteria:
-- **Best Integration**: Native integration with Moolre Collections, Disbursements, SMS, and USSD webhooks.
-- **Practical AI**: Gemini structured JSON validates insurance claims based on severity.
-- **Social Impact**: Bridges urban capital with rural agriculture directly.
-- **Zagey Vision**: Creates economic pipelines that empower everyday producers.
+- **USSD Callback URL**: `https://your-domain.com/api/ussd`
+- **Payment Webhook URL**: `https://your-domain.com/api/webhooks/moolre`

@@ -20,6 +20,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-outfit)', 'sans-serif'],
+        fraunces: ['var(--font-fraunces)', 'serif'],
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.5s ease-out',
