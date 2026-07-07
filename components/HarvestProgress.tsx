@@ -1,21 +1,25 @@
 import React from 'react';
 
-export function HarvestProgress({ funded, required }: { funded: number, required: number }) {
-  const percent = Math.min(Math.round((funded / required) * 100), 100);
+export function HarvestProgress({ stage }: { stage: string }) {
+  const stages = ['registered', 'funded', 'planting', 'growing', 'harvesting', 'complete'];
+  
+  // Default to 1 if not found, to ensure something shows
+  const currentIndex = Math.max(0, stages.indexOf(stage));
+  const percent = Math.min(100, Math.round((currentIndex / (stages.length - 1)) * 100));
+
+  const displayStage = stage ? stage.charAt(0).toUpperCase() + stage.slice(1).replace('_', ' ') : 'Registered';
 
   return (
     <div className="w-full">
-      <div className="flex justify-between text-xs mb-1 font-medium text-gray-700">
-        <span>GHS {funded.toLocaleString()} Funded</span>
-        <span>GHS {required.toLocaleString()} Goal</span>
+      <div className="flex justify-between text-xs mb-1.5 font-bold text-moolre-navy">
+        <span>Lifecycle: {displayStage}</span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+      <div className="w-full bg-gray-200 rounded-full h-2">
         <div 
-          className="bg-green-600 h-2.5 rounded-full transition-all duration-500 ease-out" 
+          className="bg-moolre-green h-2 rounded-full transition-all duration-500 ease-out" 
           style={{ width: `${percent}%` }}
         ></div>
       </div>
-      <div className="text-right text-xs text-gray-500 mt-1">{percent}% Complete</div>
     </div>
   );
 }
