@@ -15,8 +15,14 @@ export async function POST(req: NextRequest) {
     
     // Signature verification is optional unless strictly required by ENV, per instructions.
     const isValid = verifyWebhookSignature({ rawBody, signatureHeader: signature });
-    if (!isValid) {
-       console.warn('Webhook signature verification failed or missing - proceeding since it is allowed in demo mode');
+    if (process.env.MOOLRE_WEBHOOK_REQUIRE_SIGNATURE === 'true') {
+       if (!isValid) {
+          return new NextResponse('Bad Request: Invalid signature', { status: 400 });
+       }
+    } else {
+       if (!isValid) {
+          console.warn('Webhook signature verification failed or missing - proceeding since it is allowed in demo mode');
+       }
     }
 
     const payload = JSON.parse(rawBody);
@@ -24,8 +30,9 @@ export async function POST(req: NextRequest) {
 
     // Map according to Moolre specs
     const reference = payload.data?.externalref || payload.data?.reference || payload.reference;
-    const providerReference = payload.id || payload.transaction_id;
+    const providerReference = payload.id || payload.transaction_id || payload.data?.reference;
     const status = payload.status || payload.event;
+    const code = payload.code || payload.data?.code;
     
     // Idempotency key: combination of reference and status
     const idempotencyKey = providerReference || `${reference}-${status}`;
@@ -47,8 +54,8 @@ export async function POST(req: NextRequest) {
     });
     await webhookEvent.save();
 
-    // Success in Moolre collections is usually status 1, "1", or "successful" / "payment.success"
-    const isSuccess = status === 1 || status === '1' || status === 'successful' || status === 'payment.success';
+    // Success in Moolre collections: status 1 and code 'P01', or legacy 'successful'
+    const isSuccess = (status === 1 || status === '1') && (code === 'P01') || status === 'successful' || status === 'payment.success';
 
     if (isSuccess) {
        const transaction = await Transaction.findOne({ reference });

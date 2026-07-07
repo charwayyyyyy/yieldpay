@@ -35,3 +35,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+AWARD_MAPPING.md
+FINAL_WINNING_REPORT.md
+JUDGE_DEMO_SCRIPT.md
+TEST_PLAN.md

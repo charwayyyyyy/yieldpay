@@ -9,6 +9,7 @@ import { USSDSession } from '@/models/USSDSession';
 import { InsuranceClaim } from '@/models/InsuranceClaim';
 import { ShieldAlert, Activity, CheckCircle, Smartphone, Map, CreditCard, Send, Zap } from 'lucide-react';
 import Link from 'next/link';
+import TraceTimeline from '@/components/admin/TraceTimeline';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +69,10 @@ export default async function AdminPage({ searchParams }: { searchParams: { key?
           <StatCard title="USSD Sessions" value={totalUSSD} icon={<Smartphone className="text-gray-600 w-5 h-5"/>} />
           <StatCard title="Total Claims" value={totalClaims} icon={<ShieldAlert className="text-red-500 w-5 h-5"/>} />
           <StatCard title="AI Approved" value={aiApprovedClaims} icon={<CheckCircle className="text-moolre-gold w-5 h-5"/>} />
+        </div>
+
+        <div className="mb-12">
+          <TraceTimeline adminKey={searchParams.key || ''} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

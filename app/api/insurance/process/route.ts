@@ -7,6 +7,7 @@ import { Transaction } from '@/models/Transaction';
 import { DisbursementLog } from '@/models/DisbursementLog';
 import { initiateDisbursement, sendSMS } from '@/lib/moolre';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { verifyWeatherRisk } from '@/lib/weather';
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,6 +34,18 @@ export async function POST(req: NextRequest) {
       recommendedPayoutPercentage: 0
     };
 
+    let weatherRiskSignal: any = null;
+    try {
+      weatherRiskSignal = await verifyWeatherRisk({
+        region: crop.region,
+        cropType: crop.cropType,
+        claimDescription: claim.description,
+        claimDate: claim.createdAt || new Date()
+      });
+    } catch (e) {
+      console.error('Weather risk error:', e);
+    }
+
     if (process.env.GEMINI_API_KEY) {
       try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -42,6 +55,8 @@ export async function POST(req: NextRequest) {
           Analyze the following agricultural insurance claim from a Ghanaian farmer.
           Crop: ${crop.acres} acres of ${crop.cropType} in ${crop.region} Region.
           Farmer's Description: "${claim.description}"
+          
+          Weather Risk Signal: ${weatherRiskSignal ? JSON.stringify(weatherRiskSignal) : 'Unavailable'}
           
           Respond strictly in the following JSON format without any markdown wrappers or extra text:
           {
@@ -71,12 +86,15 @@ export async function POST(req: NextRequest) {
     claim.severity = decisionData.severity as any;
     claim.confidence = decisionData.confidence;
     
-    // Backend decision engine
-    if (decisionData.decision === 'approve' && decisionData.confidence >= 0.8) {
-      // Calculate payout: min(fundingRequired * percentage, max limit e.g. fundingRequired)
-      const maxPayout = crop.fundingRequired;
-      const proposedPayout = maxPayout * (decisionData.recommendedPayoutPercentage / 100);
-      claim.payoutAmount = Math.min(proposedPayout, maxPayout);
+    // Backend decision rules
+    const maxPayoutCap = Number(process.env.INSURANCE_MAX_PAYOUT_GHS) || 300;
+    const weatherOk = weatherRiskSignal && (weatherRiskSignal.confidence >= 0.5 || decisionData.cause === 'pests' || decisionData.cause === 'disease');
+    
+    if (decisionData.decision === 'approve' && decisionData.confidence >= 0.8 && weatherOk) {
+      // Calculate payout: min(fundingRequired * percentage, max limit e.g. fundingRequired, maxPayoutCap)
+      const maxAvailable = crop.fundingRequired;
+      const proposedPayout = maxAvailable * (decisionData.recommendedPayoutPercentage / 100);
+      claim.payoutAmount = Math.min(proposedPayout, maxAvailable, maxPayoutCap);
       claim.status = 'approved';
       await claim.save();
 
