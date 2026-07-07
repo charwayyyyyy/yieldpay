@@ -36,7 +36,7 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center animate-fade-in-up">
           <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-moolre-gold/20 text-moolre-gold mb-6 border border-moolre-gold/30">
             <Leaf className="w-4 h-4 mr-2" />
-            Moolre Startup Cup '26
+            Moolre Startup Cup &apos;26
           </span>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8">
             Fund a Farmer. <br />

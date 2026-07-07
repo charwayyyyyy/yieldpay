@@ -28,7 +28,7 @@ export default function RootLayout({
             <div className="flex justify-between h-20 items-center">
               <div className="flex-shrink-0 flex items-center">
                 <Link href="/">
-                  <Image src="/logo.png" alt="YieldPay Logo" width={160} height={48} className="object-contain" priority />
+                  <Image src="/logo.png" alt="YieldPay Logo" width={160} height={40} className="h-10 w-auto object-contain py-1" priority />
                 </Link>
               </div>
               <div className="flex space-x-8">
